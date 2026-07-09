@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="BiSKuS 2026 – Bildungsseminar für Kulturarbeit und Sprache der ZfA. Interaktive Weltkarte der DSD-Lehrkräfte.">
+  <title>BiSKuS 2026 – ZfA DSD-Lehrerseminar Bonn</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            cyber: {
+              black: '#070b13',
+              dark: '#0e1726',
+              card: 'rgba(15, 23, 42, 0.65)',
+              border: 'rgba(51, 65, 85, 0.4)',
+              primary: '#3b82f6',
+              secondary: '#06b6d4',
+              accent: '#ec4899',
+              success: '#22c55e',
+            }
+          },
+          fontFamily: {
+            sans: ['Outfit', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- Custom styles -->
+  <style>
+    body {
+      background-color: #070b13;
+      overflow: hidden;
+      font-family: 'Outfit', sans-serif;
+    }
+    
+    /* Scrollbar Styling */
+    ::-webkit-scrollbar {
+      width: 4px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.1);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(59, 130, 246, 0.3);
+      border-radius: 2px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(59, 130, 246, 0.6);
+    }
+
+    /* Glassmorphism utility */
+    .glass {
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(51, 65, 85, 0.35);
+    }
+
+    /* Glow effects */
+    .glow-green {
+      box-shadow: 0 0 15px rgba(34, 197, 94, 0.4);
+    }
+
+    /* Custom Switch Styling */
+    .switch-checkbox:checked + .switch-label {
+      background-color: #3b82f6;
+    }
+    .switch-checkbox:checked + .switch-label .switch-dot {
+      transform: translateX(100%);
+    }
+
+    /* Pulsing animations */
+    @keyframes pulse-fast {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(1.1); }
+    }
+    .animate-pulse-fast {
+      animation: pulse-fast 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+
+    /* Scanline effect */
+    @keyframes scanline {
+      0% { transform: translateY(-100%); }
+      100% { transform: translateY(100%); }
+    }
+    .scanline::after {
+      content: '';
+      position: absolute;
+      width: 100%;
+      height: 4px;
+      background: linear-gradient(to bottom, rgba(59, 130, 246, 0), rgba(59, 130, 246, 0.15), rgba(59, 130, 246, 0));
+      animation: scanline 6s linear infinite;
+    }
+  </style>
+
+  <!-- Load Three.js and Globe.gl via standard CDN scripts (Robust Fallback) -->
+  <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+  <script src="https://unpkg.com/globe.gl@2.30.0/dist/globe.gl.min.js"></script>
+</head>
+<body class="text-slate-200 min-h-screen relative select-none scanline">
+
+  <!-- 3D Canvas Container -->
+  <div id="globeViz" class="absolute inset-0 w-full h-full z-0"></div>
+
+  <!-- Loading Overlay -->
+  <div id="loader" class="absolute inset-0 z-50 flex flex-col items-center justify-center bg-cyber-black transition-opacity duration-1000">
+    <div class="relative w-24 h-24 mb-4">
+      <div class="absolute inset-0 rounded-full border-4 border-cyber-primary/20"></div>
+      <div class="absolute inset-0 rounded-full border-4 border-t-cyber-secondary animate-spin"></div>
+      <div class="absolute inset-2 rounded-full border-4 border-b-cyber-accent animate-spin" style="animation-direction: reverse; animation-duration: 1.5s;"></div>
+    </div>
+    <h2 class="text-xl font-bold tracking-widest text-cyber-secondary font-mono animate-pulse">BiSKuS 2026 wird geladen...</h2>
+    <p class="text-sm text-slate-500 font-mono mt-2" id="loader-status">Seminar-Netzwerk wird initialisiert...</p>
+  </div>
+
+  <!-- UI Overlay -->
+  <div class="absolute inset-0 flex pointer-events-none p-6 justify-between z-10 flex-col md:flex-row bg-transparent">
+    
+    <!-- LEFT PANEL: CONTROL CENTER -->
+    <div class="w-full md:w-96 flex flex-col gap-4 pointer-events-auto h-full max-h-[90vh] md:max-h-full">
+      <!-- Header -->
+      <div class="glass p-5 rounded-2xl flex flex-col gap-2 relative overflow-hidden shadow-lg border border-slate-700/40">
+        <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyber-secondary via-cyber-primary to-cyber-accent"></div>
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <div class="w-3 h-3 rounded-full bg-cyber-success animate-pulse"></div>
+            <span class="font-mono text-xs uppercase tracking-widest text-cyber-success font-semibold">Seminar Aktiv</span>
+          </div>
+          <span class="font-mono text-[10px] text-slate-400">ZfA · BONN · 2026</span>
+        </div>
+        <h1 class="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-white via-cyan-200 to-slate-400 bg-clip-text text-transparent leading-tight">
+          BiSKuS 2026
+        </h1>
+        <p class="text-[10px] font-mono text-cyber-secondary uppercase tracking-widest font-semibold">Bildungsseminar für Kulturarbeit und Sprache</p>
+        <div class="h-px bg-slate-700/60 my-1"></div>
+        <p class="text-[11px] text-slate-400 leading-relaxed">
+          Interaktives Netzwerk der teilnehmenden <span class="text-slate-300 font-semibold">DSD-Ortslehrkräfte</span> aus aller Welt, die zur Fortbildung in Bonn, Deutschland zusammengekommen sind.
+        </p>
+        <div class="flex gap-2 mt-1 flex-wrap">
+          <span class="text-[9px] font-mono px-2 py-0.5 rounded bg-blue-500/15 text-blue-300 border border-blue-500/30 font-bold tracking-wider uppercase">ZfA</span>
+          <span class="text-[9px] font-mono px-2 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 font-bold tracking-wider uppercase">DSD I &amp; II</span>
+          <span class="text-[9px] font-mono px-2 py-0.5 rounded bg-green-500/15 text-green-300 border border-green-500/30 font-bold tracking-wider uppercase">OLK-Seminar</span>
+          <span class="text-[9px] font-mono px-2 py-0.5 rounded bg-purple-500/15 text-purple-300 border border-purple-500/30 font-bold tracking-wider uppercase">Bonn 2026</span>
+        </div>
+      </div>
+
+      <!-- Teilnehmer-Liste -->
+      <div class="glass p-5 rounded-2xl flex flex-col flex-1 gap-3 overflow-hidden shadow-lg border border-slate-700/40">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+          <h2 class="text-sm font-bold tracking-wider uppercase text-cyber-secondary font-mono flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+            Teilnehmende Lehrkräfte (26)
+          </h2>
+          <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-cyber-secondary/15 text-cyber-secondary border border-cyber-secondary/35 font-bold tracking-wider uppercase">AKTIV</span>
+        </div>
+
+        <!-- Scrollable City Container -->
+        <div class="flex-1 overflow-y-auto pr-1 flex flex-col gap-2" id="city-list">
+          <!-- Populated by JavaScript -->
+        </div>
+
+        <!-- Target Destination Card (Bonn) -->
+        <div id="bonn-node" class="mt-2 p-3 bg-cyber-success/10 border border-cyber-success/30 hover:border-cyber-success/60 rounded-xl cursor-pointer transition-all duration-300 flex items-center justify-between group">
+          <div class="flex items-center gap-3">
+            <div class="relative w-9 h-9 flex items-center justify-center rounded-lg bg-cyber-success/20 overflow-hidden">
+              <span class="text-cyber-success font-mono font-bold text-xs">🏛️</span>
+              <div class="absolute inset-0 rounded-lg border border-cyber-success/50 animate-ping opacity-75"></div>
+            </div>
+            <div>
+              <h4 class="font-bold text-sm text-cyber-success group-hover:underline leading-tight">ZfA-Seminarzentrum Bonn</h4>
+              <p class="text-[10px] text-slate-400 font-mono leading-tight">Zentralstelle für das Auslandsschulwesen</p>
+            </div>
+          </div>
+          <div class="text-right">
+            <span class="text-[9px] font-mono bg-cyber-success/20 text-cyber-success border border-cyber-success/30 px-2 py-0.5 rounded uppercase font-bold tracking-wider">GASTGEBER</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Controls Panel -->
+      <div class="glass p-5 rounded-2xl flex flex-col gap-4 shadow-lg border border-slate-700/40">
+        <h3 class="text-xs font-bold tracking-wider uppercase text-slate-400 font-mono">⚙ Darstellungsoptionen</h3>
+        
+        <!-- Auto Rotate -->
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-medium text-slate-300">Kamera-Autorotation</span>
+          <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+            <input type="checkbox" name="toggle" id="auto-rotate-switch" checked class="switch-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 border-transparent appearance-none cursor-pointer focus:outline-none transition-transform duration-300"/>
+            <label for="auto-rotate-switch" class="switch-label block overflow-hidden h-6 rounded-full bg-slate-700 cursor-pointer transition-colors duration-300">
+              <span class="switch-dot block w-6 h-6 rounded-full bg-white shadow transform translate-x-0"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Rotate Speed -->
+        <div class="flex flex-col gap-1">
+          <div class="flex justify-between text-xs text-slate-300">
+            <span>Rotationsgeschwindigkeit</span>
+            <span id="rotate-speed-val" class="font-mono text-cyber-secondary">0.5</span>
+          </div>
+          <input type="range" id="rotate-speed-slider" min="0.1" max="2.0" step="0.1" value="0.5" class="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyber-primary">
+        </div>
+
+        <!-- Arc Animation Speed -->
+        <div class="flex flex-col gap-1">
+          <div class="flex justify-between text-xs text-slate-300">
+            <span>Impulsfrequenz (Datenstrom)</span>
+            <span id="arc-speed-val" class="font-mono text-cyber-accent">Mittel</span>
+          </div>
+          <input type="range" id="arc-speed-slider" min="1" max="3" step="1" value="2" class="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyber-accent">
+        </div>
+
+        <!-- Theme Color Dropdown -->
+        <div class="flex items-center justify-between gap-4">
+          <span class="text-xs text-slate-300">Atmosphärenfarbe</span>
+          <select id="aura-color" class="bg-slate-900 border border-slate-700/60 rounded px-2 py-1 text-xs text-slate-300 focus:outline-none focus:border-cyber-primary cursor-pointer font-mono">
+            <option value="#3b82f6" selected>Neondunkelblau</option>
+            <option value="#ec4899">Cyberpink</option>
+            <option value="#22c55e">Neongrün</option>
+            <option value="#eab308">Sonnengelb</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL: INSPECTOR CARD & TELEMETRY LOG -->
+    <div class="w-full md:w-96 flex flex-col gap-4 pointer-events-auto mt-4 md:mt-0 justify-between h-full max-h-[85vh] md:max-h-full">
+      
+      <!-- Teilnehmer-Detailkarte (erscheint beim Klick) -->
+      <div id="inspector-card" class="glass p-5 rounded-2xl flex flex-col gap-4 shadow-xl border border-slate-700/40 relative overflow-hidden transition-all duration-500 opacity-0 transform translate-x-10 pointer-events-none">
+        <!-- Glow Indicator -->
+        <div id="inspector-glow" class="absolute top-0 left-0 w-1.5 h-full bg-cyber-secondary"></div>
+        <div class="absolute top-0 right-0 font-mono text-[8px] text-slate-600 pt-2 pr-3 tracking-widest">BiSKuS 2026</div>
+        
+        <div class="flex justify-between items-start">
+          <div>
+            <span class="font-mono text-[9px] text-cyber-secondary uppercase tracking-widest font-semibold">Teilnehmer-Info</span>
+            <h3 class="text-base font-bold tracking-tight text-white mt-1 leading-tight">
+              <span id="inspect-vorname">Nataliia</span> <span id="inspect-nachname" class="text-cyber-secondary">Malysheva</span>
+            </h3>
+          </div>
+          <button id="close-inspector" class="text-slate-400 hover:text-white transition-colors p-1 rounded hover:bg-slate-800">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+          </button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 text-[11px] border-t border-slate-800/80 pt-3">
+          <div>
+            <p class="text-slate-500 font-mono text-[8px] uppercase tracking-wider">Stadt</p>
+            <p id="inspect-stadt" class="font-semibold mt-0.5 text-slate-200">Oleksandrija</p>
+          </div>
+          <div>
+            <p class="text-slate-500 font-mono text-[8px] uppercase tracking-wider">Land</p>
+            <p id="inspect-land" class="font-semibold mt-0.5 text-slate-200">Ukraine</p>
+          </div>
+        </div>
+
+        <div class="border-t border-slate-800/80 pt-3">
+          <p class="text-slate-500 font-mono text-[8px] uppercase tracking-wider">Distanz nach Bonn</p>
+          <p id="inspect-distance" class="text-sm font-bold mt-0.5 text-cyber-secondary font-mono">1.650 km</p>
+        </div>
+
+        <button id="inspect-fly-btn" class="w-full py-2 bg-cyber-primary/20 hover:bg-cyber-primary/40 border border-cyber-primary/45 rounded-xl text-xs font-bold tracking-wider uppercase text-cyber-primary transition-all duration-300 flex items-center justify-center gap-2 hover:scale-[1.02]">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+          Standort auf Karte anzeigen
+        </button>
+      </div>
+
+      <!-- Spacing div to push logs down if inspector is hidden -->
+      <div class="flex-grow"></div>
+
+      <!-- Aktivitätsprotokoll -->
+      <div class="glass p-4 rounded-2xl flex flex-col gap-2 shadow-lg border border-slate-700/40 h-44 overflow-hidden">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-1.5">
+          <h4 class="text-[10px] font-bold font-mono text-cyber-accent uppercase tracking-widest flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-cyber-accent animate-ping"></span>
+            Seminar-Protokoll · Live
+          </h4>
+          <span class="text-[9px] font-mono text-slate-500">BiSKuS·LOG</span>
+        </div>
+        <!-- Log lines container -->
+        <div id="log-console" class="flex-grow overflow-y-auto font-mono text-[10px] text-slate-400 flex flex-col gap-1 select-text">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer Bar -->
+  <div class="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-10 pointer-events-auto flex items-center gap-3">
+    <span class="glass px-3 py-1.5 rounded-full text-[9px] font-mono text-slate-500 border border-slate-700/40 tracking-widest uppercase">BiSKuS 2026 · ZfA · Bonn, Deutschland</span>
+    <button id="reset-cam" class="glass px-4 py-2 hover:bg-slate-800/80 rounded-full text-xs font-semibold text-slate-300 border border-slate-700/50 hover:border-slate-500/50 transition-all duration-300 hover:scale-105 flex items-center gap-1.5 shadow-lg">
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.228 9H18.91M4 9h5"></path></svg>
+      Übersichtsansicht
+    </button>
+  </div>
+
+  <!-- Main JavaScript App Logic -->
+  <script>
+    // 1. Data Source Definition
+    const BONN_COORDS = { 
+      lat: 50.7374, 
+      lng: 7.0982, 
+      vorname: 'ZfA',
+      nachname: 'Seminarzentrum',
+      land: 'Deutschland', 
+      stadt: 'Bonn',
+      color: '#22c55e',
+      code: 'DE'
+    };
+
+    const cities = [
+      { vorname: 'Aniko', nachname: 'Bollerne Pap', land: 'Ungarn', stadt: 'Pecs', lat: 46.0708, lng: 18.2331, color: '#06b6d4', code: 'HU' },
+      { vorname: 'Annita', nachname: 'Penner Peters', land: 'Mexiko', stadt: 'Cuauhtemoc', lat: 28.4050, lng: -106.8667, color: '#06b6d4', code: 'MX' },
+      { vorname: 'Bayartsetseg', nachname: 'Delegbayar', land: 'Mongolei', stadt: 'Ulan-Bator', lat: 47.9219, lng: 106.9153, color: '#06b6d4', code: 'MN' },
+      { vorname: 'Boya', nachname: 'Wang', land: 'China', stadt: 'Xi\'an', lat: 34.2583, lng: 108.9286, color: '#06b6d4', code: 'CN' },
+      { vorname: 'Carmelinda', nachname: 'D\'Alessandro', land: 'Italien', stadt: 'Viterbo', lat: 42.4232, lng: 12.1114, color: '#06b6d4', code: 'IT' },
+      { vorname: 'Daniela', nachname: 'Exner de Carmona Esteves', land: 'Brasilien', stadt: 'Joinville', lat: -26.3044, lng: -48.8464, color: '#06b6d4', code: 'BR' },
+      { vorname: 'Dina', nachname: 'Sadek', land: 'Ägypten', stadt: 'Alexandria', lat: 31.2000, lng: 29.9190, color: '#06b6d4', code: 'EG' },
+      { vorname: 'Dunja', nachname: 'Sacic', land: 'Kroatien', stadt: 'Varaidim', lat: 46.3044, lng: 16.3378, color: '#06b6d4', code: 'HR' },
+      { vorname: 'Dzemilamna', nachname: 'Dzananovic', land: 'Bosnien und Herzogowina', stadt: 'Sarajevo', lat: 43.8563, lng: 18.4131, color: '#06b6d4', code: 'BA' },
+      { vorname: 'Emiliana Maria', nachname: 'Sirolli', land: 'Argentinien', stadt: 'Buenos Aires', lat: -34.6037, lng: -58.3816, color: '#06b6d4', code: 'AR' },
+      { vorname: 'Inga', nachname: 'Zeltina', land: 'Lettland', stadt: 'Riga', lat: 56.9460, lng: 24.1059, color: '#06b6d4', code: 'LV' },
+      { vorname: 'Jaspreet', nachname: 'Kaur Chawla', land: 'Indien', stadt: 'Neu Delhi', lat: 28.6139, lng: 77.2090, color: '#06b6d4', code: 'IN' },
+      { vorname: 'Lister', nachname: 'Trisna Hulu', land: 'Indonesien', stadt: 'Pematangsiantar', lat: 2.9600, lng: 99.0600, color: '#06b6d4', code: 'ID' },
+      { vorname: 'Magdalena', nachname: 'Karnacz', land: 'Polen', stadt: 'Cieszyn', lat: 49.7513, lng: 18.6321, color: '#06b6d4', code: 'PL' },
+      { vorname: 'Margit', nachname: 'Minich Dobó', land: 'Serbien', stadt: 'Subotica', lat: 46.1000, lng: 19.6667, color: '#06b6d4', code: 'RS' },
+      { vorname: 'Marija', nachname: 'Krepieva', land: 'Nordmazedonien', stadt: 'Skopje', lat: 41.9961, lng: 21.4317, color: '#06b6d4', code: 'MK' },
+      { vorname: 'Monica', nachname: 'Betancor Bohn', land: 'Spanien', stadt: 'Las Palmas de Gran Canaria', lat: 28.1235, lng: -15.4363, color: '#06b6d4', code: 'ES' },
+      { vorname: 'Nadezhda', nachname: 'Zhorova', land: 'Kasachstan', stadt: 'Astana', lat: 51.1801, lng: 71.4460, color: '#06b6d4', code: 'KZ' },
+      { vorname: 'Nataliia', nachname: 'Malysheva', land: 'Ukraine', stadt: 'Oleksandrija', lat: 48.6692, lng: 33.1156, color: '#06b6d4', code: 'UA' },
+      { vorname: 'Romena', nachname: 'Korsakienė', land: 'Litauen', stadt: 'Vilnius', lat: 54.6872, lng: 25.2800, color: '#06b6d4', code: 'LT' },
+      { vorname: 'Sergio', nachname: 'Lopez-Contreras', land: 'USA', stadt: 'New York', lat: 40.7128, lng: -74.0060, color: '#06b6d4', code: 'US' },
+      { vorname: 'Snezhana', nachname: 'Todorova', land: 'Bulgarien', stadt: 'Sofia', lat: 42.6977, lng: 23.3219, color: '#06b6d4', code: 'BG' },
+      { vorname: 'Tanmay', nachname: 'Joshi', land: 'Kanada', stadt: 'Burnaby', lat: 49.2664, lng: -122.9526, color: '#06b6d4', code: 'CA' },
+      { vorname: 'Thi Huyen Trang', nachname: 'Luong', land: 'Vietnam', stadt: 'Hanoi', lat: 21.0285, lng: 105.8542, color: '#06b6d4', code: 'VN' },
+      { vorname: 'Viktoriia', nachname: 'Nikolaiieva', land: 'Ukraine', stadt: 'Kryvyj Rih', lat: 47.9097, lng: 33.3804, color: '#06b6d4', code: 'UA' },
+      { vorname: 'Yoqutxon', nachname: 'Rustamova', land: 'Usbekistan', stadt: 'Fergana', lat: 40.3842, lng: 71.7843, color: '#06b6d4', code: 'UZ' }
+    ];
+
+    // Helper: Haversine distance
+    function getDistance(lat1, lon1, lat2, lon2) {
+      const R = 6371; // Earth Radius in km
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = 
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+        Math.sin(dLon/2) * Math.sin(dLon/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      return Math.round(R * c);
+    }
+
+    // Fetch with absolute timeout to prevent loader lockups
+    function fetchWithTimeout(resource, options = {}) {
+      const { timeout = 2500 } = options;
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), timeout);
+      return fetch(resource, { ...options, signal: controller.signal })
+        .then(response => { clearTimeout(id); return response; })
+        .catch(err => { clearTimeout(id); throw err; });
+    }
+
+    // Dom elements
+    const loader = document.getElementById('loader');
+    const loaderStatus = document.getElementById('loader-status');
+    const container = document.getElementById('globeViz');
+    const cityListEl = document.getElementById('city-list');
+    const inspectorCard = document.getElementById('inspector-card');
+    const closeInspectorBtn = document.getElementById('close-inspector');
+    const inspectVorname = document.getElementById('inspect-vorname');
+    const inspectNachname = document.getElementById('inspect-nachname');
+    const inspectStadt = document.getElementById('inspect-stadt');
+    const inspectLand = document.getElementById('inspect-land');
+    const inspectDistance = document.getElementById('inspect-distance');
+    const inspectGlow = document.getElementById('inspector-glow');
+    const inspectFlyBtn = document.getElementById('inspect-fly-btn');
+    const logConsole = document.getElementById('log-console');
+    const resetCamBtn = document.getElementById('reset-cam');
+    
+    // Controls elements
+    const autoRotateSwitch = document.getElementById('auto-rotate-switch');
+    const rotateSpeedSlider = document.getElementById('rotate-speed-slider');
+    const rotateSpeedVal = document.getElementById('rotate-speed-val');
+    const arcSpeedSlider = document.getElementById('arc-speed-slider');
+    const arcSpeedVal = document.getElementById('arc-speed-val');
+    const auraColorDropdown = document.getElementById('aura-color');
+
+    // UI State variables
+    let selectedNode = null;
+    let targetCamPos = null;
+    const transitionSpeed = 0.045; // camera smooth lerp speed
+
+    // Map speeds to ms values for arcDashAnimateTime
+    const speedMap = {
+      1: 5000, // Slow
+      2: 2500, // Medium
+      3: 1000  // Fast
+    };
+    const speedLabels = {
+      1: 'Slow',
+      2: 'Medium',
+      3: 'Fast'
+    };
+
+    // Add logging helper
+    function appendLog(type, message, colorClass = 'text-slate-400') {
+      const time = new Date().toLocaleTimeString();
+      const logLine = document.createElement('div');
+      logLine.className = `${colorClass} py-0.5 border-b border-slate-900/40`;
+      
+      let prefix = '';
+      if (type === 'SYS') prefix = `<span class="text-blue-400 font-bold">[SYS]</span> `;
+      if (type === 'NET') prefix = `<span class="text-cyan-400 font-bold">[NET]</span> `;
+      if (type === 'FLOW') prefix = `<span class="text-emerald-400 font-bold">[FLOW]</span> `;
+      if (type === 'PING') prefix = `<span class="text-pink-400 font-bold">[PING]</span> `;
+
+      logLine.innerHTML = `<span class="text-slate-600 font-normal">[${time}]</span> ${prefix}${message}`;
+      logConsole.appendChild(logLine);
+      logConsole.scrollTop = logConsole.scrollHeight;
+
+      // Keep only last 40 entries
+      while (logConsole.childElementCount > 40) {
+        logConsole.removeChild(logConsole.firstChild);
+      }
+    }
+
+    // Initialize Globe using Globe.gl factory
+    appendLog('SYS', 'Initializing Globe.gl engine context...');
+    const myGlobe = Globe()(container);
+    
+    // Extract THREE from window
+    const THREE = window.THREE;
+    const scene = myGlobe.scene();
+    const camera = myGlobe.camera();
+    const renderer = myGlobe.renderer();
+    const controls = myGlobe.controls();
+
+    // 2. Customize Globe base and atmosphere
+    const baseGlobeMat = new THREE.MeshPhongMaterial({
+      color: 0x050a12, // Deep graphite/black
+      transparent: true,
+      opacity: 0.88,
+      shininess: 45,
+      specular: 0x3b82f6 // bright blue specular reflections
+    });
+    myGlobe.globeMaterial(baseGlobeMat);
+
+    myGlobe.showAtmosphere(true)
+           .atmosphereColor('#3b82f6')
+           .atmosphereAltitude(0.16);
+
+    // Default view distance
+    camera.position.set(-180, 200, 240);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.minDistance = 140;
+    controls.maxDistance = 550;
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 0.5;
+
+    // Handle user manual interaction to cancel camera auto lerping
+    controls.addEventListener('start', () => {
+      targetCamPos = null;
+    });
+
+    appendLog('SYS', 'Globe.gl viewport initialized.');
+
+    // 3. Add custom starfield
+    const starsGeometry = new THREE.BufferGeometry();
+    const starsCount = 2500;
+    const positions = new Float32Array(starsCount * 3);
+    const starColors = new Float32Array(starsCount * 3);
+
+    for (let i = 0; i < starsCount * 3; i += 3) {
+      const r = 850 + Math.random() * 400;
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos((Math.random() * 2) - 1);
+
+      positions[i] = r * Math.sin(phi) * Math.cos(theta);
+      positions[i + 1] = r * Math.sin(phi) * Math.sin(theta);
+      positions[i + 2] = r * Math.cos(phi);
+
+      const rand = Math.random();
+      if (rand < 0.7) {
+        starColors[i] = 1.0; starColors[i+1] = 1.0; starColors[i+2] = 1.0; // White
+      } else if (rand < 0.9) {
+        starColors[i] = 0.6; starColors[i+1] = 0.8; starColors[i+2] = 1.0; // Cyber Ice-Blue
+      } else {
+        starColors[i] = 1.0; starColors[i+1] = 0.8; starColors[i+2] = 0.9; // Synth Pink
+      }
+    }
+    starsGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    starsGeometry.setAttribute('color', new THREE.BufferAttribute(starColors, 3));
+
+    const starsMaterial = new THREE.PointsMaterial({
+      size: 1.5,
+      sizeAttenuation: true,
+      vertexColors: true,
+      transparent: true,
+      opacity: 0.8
+    });
+
+    const starfield = new THREE.Points(starsGeometry, starsMaterial);
+    scene.add(starfield);
+    appendLog('SYS', 'Generated far-plane deep space starfield.');
+
+    // Adjust lights (Ambient + Spotlights)
+    scene.add(new THREE.AmbientLight(0x0e1726, 1.8));
+
+    const spotCyan = new THREE.DirectionalLight(0x3b82f6, 3.5);
+    spotCyan.position.set(200, 300, 150);
+    scene.add(spotCyan);
+
+    const spotPink = new THREE.DirectionalLight(0xec4899, 1.8);
+    spotPink.position.set(-200, -300, -150);
+    scene.add(spotPink);
+
+    appendLog('SYS', 'Dual-tone spotlight profiles integrated.');
+
+    // 4. Fetch Landmass Polygons locally (Instant load, bypasses CDN blocks and CORS)
+    loaderStatus.textContent = "Loading local topological maps...";
+    
+    fetch('ne_110m_admin_0_countries.geojson')
+      .then(res => {
+        if (!res.ok) throw new Error('Local GeoJSON load failure');
+        return res.json();
+      })
+      .then(countries => {
+        loaderStatus.textContent = "Projecting continent outlines...";
+        myGlobe.polygonsData(countries.features)
+               .polygonAltitude(0.005)
+               .polygonCapColor(() => 'rgba(6, 182, 212, 0.32)') // Brighter, distinct translucent neon-cyan land fill
+               .polygonSideColor(() => 'rgba(6, 182, 212, 0.05)')
+               .polygonStrokeColor(() => '#22d3ee'); // Very bright, sharp glowing neon-cyan border
+        appendLog('SYS', 'Sharp topographic country boundary vectors projected.');
+        completeInitialization();
+      })
+      .catch(err => {
+        console.warn("Could not load country polygons locally. Trying fallback remote source...", err);
+        fetch('https://raw.githubusercontent.com/vasturiano/globe.gl/master/example/datasets/ne_110m_admin_0_countries.geojson')
+          .then(res => res.json())
+          .then(countries => {
+            myGlobe.polygonsData(countries.features)
+                   .polygonAltitude(0.005)
+                   .polygonCapColor(() => 'rgba(6, 182, 212, 0.32)')
+                   .polygonSideColor(() => 'rgba(6, 182, 212, 0.05)')
+                   .polygonStrokeColor(() => '#22d3ee');
+            completeInitialization();
+          })
+          .catch(remoteErr => {
+            appendLog('SYS', 'Polygons completely offline. Starting fallback texture mapping.', 'text-amber-500');
+            myGlobe.globeImageUrl('//unpkg.com/three-globe/example/img/earth-dark.jpg');
+            completeInitialization();
+          });
+      });
+
+    function completeInitialization() {
+      loaderStatus.textContent = "Synchronizing data beacons...";
+      
+      initGlobeLayers();
+      populateCityList();
+
+      // Hide Loader Screen
+      setTimeout(() => {
+        loader.classList.add('opacity-0');
+        setTimeout(() => {
+          loader.style.display = 'none';
+        }, 1000);
+      }, 500);
+
+      appendLog('SYS', 'Initialization complete. Telemetry feed online.');
+      startTelemetryLogging();
+    }
+
+    function initGlobeLayers() {
+      // 1. Points (Cities + Bonn)
+      const pointsData = [
+        { lat: BONN_COORDS.lat, lng: BONN_COORDS.lng, color: BONN_COORDS.color, radius: 1.4, name: BONN_COORDS.name },
+        ...cities.map(c => ({ lat: c.lat, lng: c.lng, color: c.color, radius: 0.75, name: c.stadt }))
+      ];
+      myGlobe.pointsData(pointsData)
+             .pointColor(d => d.color)
+             .pointRadius(d => d.radius)
+             .pointAltitude(0.015)
+             .onPointClick(point => {
+               if (Math.abs(point.lat - BONN_COORDS.lat) < 0.01 && Math.abs(point.lng - BONN_COORDS.lng) < 0.01) {
+                 document.getElementById('bonn-node').click();
+               } else {
+                 const match = cities.find(c => Math.abs(c.lat - point.lat) < 0.01 && Math.abs(c.lng - point.lng) < 0.01);
+                 if (match) selectNode(match);
+               }
+             });
+
+      // 2. Beacons (Rings)
+      const ringsData = [
+        { lat: BONN_COORDS.lat, lng: BONN_COORDS.lng, color: BONN_COORDS.color, maxRadius: 10, speed: 2.2, repeat: 700 }, // Bonn beacon
+        ...cities.map(c => ({ lat: c.lat, lng: c.lng, color: c.color, maxRadius: 4.5, speed: 1.1, repeat: 1600 }))
+      ];
+      myGlobe.ringsData(ringsData)
+             .ringColor(d => d.color)
+             .ringMaxRadius(d => d.maxRadius)
+             .ringPropagationSpeed(d => d.speed)
+             .ringRepeatPeriod(d => d.repeat)
+             .ringAltitude(0.018);
+
+      // 3. Labels
+      const labelsData = [
+        { lat: BONN_COORDS.lat, lng: BONN_COORDS.lng, text: "Bonn Hub", color: BONN_COORDS.color, size: 1.8 },
+        ...cities.map(c => ({ lat: c.lat, lng: c.lng, text: c.stadt, color: '#e2e8f0', size: 1.0 }))
+      ];
+      myGlobe.labelsData(labelsData)
+             .labelText(d => d.text)
+             .labelSize(d => d.size)
+             .labelColor(d => d.color)
+             .labelDotRadius(0)
+             .labelAltitude(0.032)
+             .labelResolution(2)
+             .onLabelClick(label => {
+               if (Math.abs(label.lat - BONN_COORDS.lat) < 0.01 && Math.abs(label.lng - BONN_COORDS.lng) < 0.01) {
+                 document.getElementById('bonn-node').click();
+               } else {
+                 const match = cities.find(c => Math.abs(c.lat - label.lat) < 0.01 && Math.abs(c.lng - label.lng) < 0.01);
+                 if (match) selectNode(match);
+               }
+             });
+
+      // 4. Connecting Arcs
+      updateGlobeArcs();
+    }
+
+    function updateGlobeArcs() {
+      const arcSpeedSelection = parseInt(arcSpeedSlider.value);
+      const animationTime = speedMap[arcSpeedSelection];
+
+      // For each connection, we create two arcs:
+      // 1. A static, faint, solid background line (visible all the time)
+      // 2. A bright, moving dashed particle flowing towards Bonn
+      const arcsData = [];
+
+      cities.forEach((city, idx) => {
+        const dist = Math.sqrt((city.lat - BONN_COORDS.lat)**2 + (city.lng - BONN_COORDS.lng)**2);
+        const alt = Math.min(0.42, Math.max(0.16, dist * 0.0035));
+        
+        // Static background arc (always visible)
+        arcsData.push({
+          startLat: city.lat,
+          startLng: city.lng,
+          endLat: BONN_COORDS.lat,
+          endLng: BONN_COORDS.lng,
+          color: 'rgba(56, 189, 248, 0.18)', // Faint neon-cyan line
+          altitude: alt,
+          isStatic: true
+        });
+
+        // Moving dot particle arc
+        arcsData.push({
+          startLat: city.lat,
+          startLng: city.lng,
+          endLat: BONN_COORDS.lat,
+          endLng: BONN_COORDS.lng,
+          color: [city.color, BONN_COORDS.color], // Cyan-to-green gradient
+          altitude: alt,
+          animateTime: animationTime + (idx * 120),
+          isStatic: false
+        });
+      });
+
+      myGlobe.arcsData(arcsData)
+             .arcStartLat(d => d.startLat)
+             .arcStartLng(d => d.startLng)
+             .arcEndLat(d => d.endLat)
+             .arcEndLng(d => d.endLng)
+             .arcColor(d => d.color)
+             .arcAltitude(d => d.altitude)
+             .arcStroke(d => d.isStatic ? 0.6 : 1.4) // Thinner for connection path, thicker for particle
+             .arcDashLength(d => d.isStatic ? 1 : 0.06) // Solid line (length 1), moving dot (length 0.06)
+             .arcDashGap(d => d.isStatic ? 0 : 2.5) // No gap for solid line, large gap for particle
+             .arcDashAnimateTime(d => d.isStatic ? 0 : d.animateTime);
+    }
+
+    // Populate Sidebar City List
+    function populateCityList() {
+      cityListEl.innerHTML = '';
+      cities.forEach((city, index) => {
+        const item = document.createElement('div');
+        item.className = 'p-3 bg-slate-900/40 border border-slate-800/80 rounded-xl cursor-pointer hover:border-cyber-primary/50 hover:bg-slate-900/70 transition-all duration-300 flex items-center justify-between group';
+        item.dataset.index = index;
+        
+        const distance = getDistance(city.lat, city.lng, BONN_COORDS.lat, BONN_COORDS.lng);
+        
+        item.innerHTML = `
+          <div class="flex items-center gap-3">
+            <div class="w-2 h-2 rounded-full bg-cyber-secondary flex-shrink-0 group-hover:animate-ping"></div>
+            <div>
+              <h4 class="font-bold text-sm text-slate-200 group-hover:text-white leading-tight">${city.vorname} ${city.nachname}</h4>
+              <p class="text-[10px] text-slate-400 font-mono leading-tight">${city.stadt}, ${city.land}</p>
+            </div>
+          </div>
+          <div class="text-right flex-shrink-0">
+            <span class="text-[10px] font-mono text-slate-500 group-hover:text-cyber-secondary font-semibold">${distance.toLocaleString('de-DE')} km</span>
+          </div>
+        `;
+        
+        item.addEventListener('click', () => selectNode(city));
+        cityListEl.appendChild(item);
+      });
+    }
+
+    // Inspect & Focus Nodes
+    function selectNode(city) {
+      selectedNode = city;
+      
+      const distance = getDistance(city.lat, city.lng, BONN_COORDS.lat, BONN_COORDS.lng);
+      
+      inspectVorname.textContent = city.vorname;
+      inspectNachname.textContent = city.nachname;
+      inspectStadt.textContent = city.stadt;
+      inspectLand.textContent = city.land;
+      inspectDistance.textContent = `${distance.toLocaleString('de-DE')} km`;
+      inspectGlow.style.backgroundColor = city.color;
+
+      inspectorCard.classList.remove('opacity-0', 'translate-x-10', 'pointer-events-none');
+      inspectorCard.classList.add('opacity-100', 'translate-x-0', 'pointer-events-auto');
+
+      const listItems = cityListEl.querySelectorAll('[data-index]');
+      listItems.forEach(item => {
+        const itemCity = cities[parseInt(item.dataset.index)];
+        if (itemCity.stadt === city.stadt) {
+          item.classList.add('border-cyber-primary/70', 'bg-slate-900/80');
+        } else {
+          item.classList.remove('border-cyber-primary/70', 'bg-slate-900/80');
+        }
+      });
+      document.getElementById('bonn-node').classList.remove('border-cyber-success/70', 'bg-cyber-success/20');
+
+      appendLog('NET', `Fokus auf Lehrkraft: ${city.vorname} ${city.nachname} (${city.stadt}). Kanal gesichert.`);
+      triggerCameraTransition(city.lat, city.lng);
+    }
+
+    document.getElementById('bonn-node').addEventListener('click', () => {
+      selectedNode = BONN_COORDS;
+      
+      inspectVorname.textContent = BONN_COORDS.vorname;
+      inspectNachname.textContent = BONN_COORDS.nachname;
+      inspectStadt.textContent = BONN_COORDS.stadt;
+      inspectLand.textContent = BONN_COORDS.land;
+      inspectDistance.textContent = '0 km';
+      inspectGlow.style.backgroundColor = BONN_COORDS.color;
+
+      inspectorCard.classList.remove('opacity-0', 'translate-x-10', 'pointer-events-none');
+      inspectorCard.classList.add('opacity-100', 'translate-x-0', 'pointer-events-auto');
+
+      const listItems = cityListEl.querySelectorAll('[data-index]');
+      listItems.forEach(item => {
+        item.classList.remove('border-cyber-primary/70', 'bg-slate-900/80');
+      });
+      document.getElementById('bonn-node').classList.add('border-cyber-success/70', 'bg-cyber-success/20');
+
+      appendLog('SYS', 'Zentrales DSD-Seminarzentrum Bonn ausgewaehlt. Monitoring aktiv.');
+      triggerCameraTransition(BONN_COORDS.lat, BONN_COORDS.lng);
+    });
+
+    function triggerCameraTransition(lat, lng) {
+      controls.autoRotate = false;
+      const altFactor = 1.65;
+      const targetCoords = myGlobe.getCoords(lat, lng, altFactor);
+      targetCamPos = new THREE.Vector3(targetCoords.x, targetCoords.y, targetCoords.z);
+    }
+
+    closeInspectorBtn.addEventListener('click', () => {
+      selectedNode = null;
+      inspectorCard.classList.add('opacity-0', 'translate-x-10', 'pointer-events-none');
+      inspectorCard.classList.remove('opacity-100', 'translate-x-0', 'pointer-events-auto');
+      
+      const listItems = cityListEl.querySelectorAll('[data-index]');
+      listItems.forEach(item => {
+        item.classList.remove('border-cyber-primary/70', 'bg-slate-900/80');
+      });
+      document.getElementById('bonn-node').classList.remove('border-cyber-success/70', 'bg-cyber-success/20');
+
+      if (autoRotateSwitch.checked) {
+        controls.autoRotate = true;
+      }
+    });
+
+    inspectFlyBtn.addEventListener('click', () => {
+      if (selectedNode) {
+        triggerCameraTransition(selectedNode.lat, selectedNode.lng);
+      }
+    });
+
+    resetCamBtn.addEventListener('click', () => {
+      targetCamPos = new THREE.Vector3(-180, 200, 240);
+      if (autoRotateSwitch.checked) {
+        controls.autoRotate = true;
+      }
+      appendLog('SYS', 'Kameraansicht auf Standard-Vektor zurueckgesetzt.');
+    });
+
+    autoRotateSwitch.addEventListener('change', (e) => {
+      controls.autoRotate = e.target.checked;
+      appendLog('SYS', `Autorotation: ${e.target.checked ? 'AKTIVIERT' : 'DEAKTIVIERT'}`);
+    });
+
+    rotateSpeedSlider.addEventListener('input', (e) => {
+      const val = parseFloat(e.target.value);
+      controls.autoRotateSpeed = val * 1.0;
+      rotateSpeedVal.textContent = val.toFixed(1);
+    });
+
+    arcSpeedSlider.addEventListener('input', (e) => {
+      const val = parseInt(e.target.value);
+      arcSpeedVal.textContent = speedLabels[val];
+      updateGlobeArcs();
+      appendLog('SYS', `Datenfrequenz synchronisiert auf: ${speedLabels[val].toUpperCase()}`);
+    });
+
+    auraColorDropdown.addEventListener('change', (e) => {
+      const color = e.target.value;
+      myGlobe.atmosphereColor(color);
+      appendLog('SYS', `Atmosphaerenglow angepasst auf: ${color}`);
+    });
+
+    // BiSKuS 2026 Aktivitätsprotokoll
+    function startTelemetryLogging() {
+      const aktionen = [
+        c => [`FLOW`, `Einreise bestätigt: ${c.vorname} ${c.nachname} (${c.stadt}) → Bonn angekommen.`, 'text-emerald-400'],
+        c => [`KMK`, `DSD-Prüfungsunterlagen von DSD-Schule ${c.stadt} eingegangen.`, 'text-cyan-400'],
+        c => [`OLK`, `Fortbildungsmodul abgeschlossen: ${c.vorname} ${c.nachname} — Methodik DaF.`, 'text-blue-300'],
+        c => [`ZfA`, `Stipendiumsbestätigung: ${c.vorname} ${c.nachname} (${c.land}) verarbeitet.`, 'text-purple-300'],
+        c => [`DSD`, `Prüferkalibrierung: ${c.vorname} ${c.nachname} (${c.stadt}) — DSD I & II. OK.`, 'text-yellow-300'],
+        c => [`NET`, `Verbindung gesichert: DSD-Schule ${c.stadt}, ${c.land}.`, 'text-cyan-400'],
+        c => [`SEM`, `Workshop: "${c.vorname} ${c.nachname}" – Projektarbeit Mariaspring (Phase II).`, 'text-pink-400'],
+      ];
+      setInterval(() => {
+        const city = cities[Math.floor(Math.random() * cities.length)];
+        const aktion = aktionen[Math.floor(Math.random() * aktionen.length)](city);
+        appendLog(aktion[0], aktion[1], aktion[2]);
+      }, 3200);
+    }
+
+    // Camera Focus Lerp Loop
+    function animate() {
+      requestAnimationFrame(animate);
+      if (targetCamPos) {
+        camera.position.lerp(targetCamPos, transitionSpeed);
+        if (camera.position.distanceTo(targetCamPos) < 1.5) {
+          targetCamPos = null;
+          if (autoRotateSwitch.checked && !selectedNode) {
+            controls.autoRotate = true;
+          }
+        }
+      }
+    }
+    animate();
+  </script>
+</body>
+</html>
