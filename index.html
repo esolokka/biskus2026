@@ -189,51 +189,6 @@
           </div>
         </div>
       </div>
-
-      <!-- Controls Panel -->
-      <div class="glass p-5 rounded-2xl flex flex-col gap-4 shadow-lg border border-slate-700/40">
-        <h3 class="text-xs font-bold tracking-wider uppercase text-slate-400 font-mono">⚙ Darstellungsoptionen</h3>
-        
-        <!-- Auto Rotate -->
-        <div class="flex items-center justify-between">
-          <span class="text-xs font-medium text-slate-300">Kamera-Autorotation</span>
-          <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
-            <input type="checkbox" name="toggle" id="auto-rotate-switch" checked class="switch-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 border-transparent appearance-none cursor-pointer focus:outline-none transition-transform duration-300"/>
-            <label for="auto-rotate-switch" class="switch-label block overflow-hidden h-6 rounded-full bg-slate-700 cursor-pointer transition-colors duration-300">
-              <span class="switch-dot block w-6 h-6 rounded-full bg-white shadow transform translate-x-0"></span>
-            </label>
-          </div>
-        </div>
-
-        <!-- Rotate Speed -->
-        <div class="flex flex-col gap-1">
-          <div class="flex justify-between text-xs text-slate-300">
-            <span>Rotationsgeschwindigkeit</span>
-            <span id="rotate-speed-val" class="font-mono text-cyber-secondary">0.5</span>
-          </div>
-          <input type="range" id="rotate-speed-slider" min="0.1" max="2.0" step="0.1" value="0.5" class="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyber-primary">
-        </div>
-
-        <!-- Arc Animation Speed -->
-        <div class="flex flex-col gap-1">
-          <div class="flex justify-between text-xs text-slate-300">
-            <span>Impulsfrequenz (Datenstrom)</span>
-            <span id="arc-speed-val" class="font-mono text-cyber-accent">Mittel</span>
-          </div>
-          <input type="range" id="arc-speed-slider" min="1" max="3" step="1" value="2" class="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyber-accent">
-        </div>
-
-        <!-- Theme Color Dropdown -->
-        <div class="flex items-center justify-between gap-4">
-          <span class="text-xs text-slate-300">Atmosphärenfarbe</span>
-          <select id="aura-color" class="bg-slate-900 border border-slate-700/60 rounded px-2 py-1 text-xs text-slate-300 focus:outline-none focus:border-cyber-primary cursor-pointer font-mono">
-            <option value="#3b82f6" selected>Neondunkelblau</option>
-            <option value="#ec4899">Cyberpink</option>
-            <option value="#22c55e">Neongrün</option>
-            <option value="#eab308">Sonnengelb</option>
-          </select>
-        </div>
-      </div>
     </div>
 
     <!-- RIGHT PANEL: INSPECTOR CARD & TELEMETRY LOG -->
@@ -279,21 +234,48 @@
         </button>
       </div>
 
-      <!-- Spacing div to push logs down if inspector is hidden -->
-      <div class="flex-grow"></div>
-
-      <!-- Aktivitätsprotokoll -->
-      <div class="glass p-4 rounded-2xl flex flex-col gap-2 shadow-lg border border-slate-700/40 h-44 overflow-hidden">
-        <div class="flex items-center justify-between border-b border-slate-800 pb-1.5">
-          <h4 class="text-[10px] font-bold font-mono text-cyber-accent uppercase tracking-widest flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full bg-cyber-accent animate-ping"></span>
-            Seminar-Protokoll · Live
-          </h4>
-          <span class="text-[9px] font-mono text-slate-500">BiSKuS·LOG</span>
+      <!-- Controls Panel -->
+      <div class="glass p-5 rounded-2xl flex flex-col gap-4 shadow-lg border border-slate-700/40">
+        <h3 class="text-xs font-bold tracking-wider uppercase text-slate-400 font-mono">⚙ Darstellungsoptionen</h3>
+        
+        <!-- Auto Rotate -->
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-medium text-slate-300">Kamera-Autorotation</span>
+          <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+            <input type="checkbox" name="toggle" id="auto-rotate-switch" checked class="switch-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 border-transparent appearance-none cursor-pointer focus:outline-none transition-transform duration-300"/>
+            <label for="auto-rotate-switch" class="switch-label block overflow-hidden h-6 rounded-full bg-slate-700 cursor-pointer transition-colors duration-300">
+              <span class="switch-dot block w-6 h-6 rounded-full bg-white shadow transform translate-x-0"></span>
+            </label>
+          </div>
         </div>
-        <!-- Log lines container -->
-        <div id="log-console" class="flex-grow overflow-y-auto font-mono text-[10px] text-slate-400 flex flex-col gap-1 select-text">
-          <!-- Populated dynamically -->
+
+        <!-- Rotate Speed -->
+        <div class="flex flex-col gap-1">
+          <div class="flex justify-between text-xs text-slate-300">
+            <span>Rotationsgeschwindigkeit</span>
+            <span id="rotate-speed-val" class="font-mono text-cyber-secondary">0.5</span>
+          </div>
+          <input type="range" id="rotate-speed-slider" min="0.1" max="2.0" step="0.1" value="0.5" class="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyber-primary">
+        </div>
+
+        <!-- Arc Animation Speed -->
+        <div class="flex flex-col gap-1">
+          <div class="flex justify-between text-xs text-slate-300">
+            <span>Impulsfrequenz (Datenstrom)</span>
+            <span id="arc-speed-val" class="font-mono text-cyber-accent">Mittel</span>
+          </div>
+          <input type="range" id="arc-speed-slider" min="1" max="3" step="1" value="2" class="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyber-accent">
+        </div>
+
+        <!-- Theme Color Dropdown -->
+        <div class="flex items-center justify-between gap-4">
+          <span class="text-xs text-slate-300">Atmosphärenfarbe</span>
+          <select id="aura-color" class="bg-slate-900 border border-slate-700/60 rounded px-2 py-1 text-xs text-slate-300 focus:outline-none focus:border-cyber-primary cursor-pointer font-mono">
+            <option value="#3b82f6" selected>Neondunkelblau</option>
+            <option value="#ec4899">Cyberpink</option>
+            <option value="#22c55e">Neongrün</option>
+            <option value="#eab308">Sonnengelb</option>
+          </select>
         </div>
       </div>
     </div>
@@ -418,6 +400,7 @@
 
     // Add logging helper
     function appendLog(type, message, colorClass = 'text-slate-400') {
+      if (!logConsole) return;
       const time = new Date().toLocaleTimeString();
       const logLine = document.createElement('div');
       logLine.className = `${colorClass} py-0.5 border-b border-slate-900/40`;
